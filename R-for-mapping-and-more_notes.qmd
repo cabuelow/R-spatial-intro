@@ -1,0 +1,699 @@
+---
+title: "R for mapping and more"
+format: html
+#project:
+ # type: website
+  #output-dir: docs
+theme: sandstone
+author-title: Made for
+author: Reside UQ Lab
+toc: true
+toc-location: left
+toc-title: Content
+toc-depth: 4
+published-title: Date
+date: 2022-09-15
+editor: visual
+embed-resources: true
+---
+
+By [Christina Buelow](https://github.com/cabuelow)
+
+### Using R for mapping and spatial data science
+
+#### Why?
+
+-   Reproducibility
+-   Collaboration
+-   Flexibility
+-   Automation
+-   Big data
+
+#### What you'll learn in these notes
+
+1.  Overview of what spatial data is, with links to more in-depth resources
+2.  Overview of R packages available for spatial data
+3.  How to start a spatial project in R
+4.  How to wrangle spatial data in R
+5.  How to perform spatial operations in R
+6.  How to make a map in R
+7.  Common problems you might encounter in R spatial, and how to solve them
+
+#### Things you'll need
+
+These notes don't assume any prior knowledge of using R for spatial data, but do assume a basic understanding of how to use R.
+
+Install [R](https://www.r-project.org/) and [RStudio](https://www.rstudio.com/products/rstudio/download/)
+
+Install the following packages:
+
+`install.packages('sf', 'terra', 'tidyverse', 'tmap', 'tmaptools', 'cowplot')`
+
+**A quick note on mastering Rspatial**
+
+A good way to start getting used to a new R package is to read any [vignettes](https://r-pkgs.org/vignettes.html) that are available, and to read the documentation associated with functions that you'd like to use.
+
+Just use the '?' function to get the documentation. As an example, let's ask for help with the base R function we used above: 'install.packages'.
+
+```{r}
+?install.packages
+```
+
+The help documentation will tell you what a function can be used for, what arguments it takes, and the examples at the bottom of the documentation page can be **really** helpful for understanding how to use it. I've found the `terra` documentation to be particularly good for this (but the quality of documentation varies depending on package developers who write them).
+
+### Brief overview of spatial data
+
+What is spatial data? Most broadly-speaking, data is spatial when it has coordinates, and therefore a coordinate reference system (see more on this below). Coordinates define the longitude (x) and latitude (y) of where data is located across the globe.
+
+#### Spatial data types
+
+There are three broad classes of spatial data that you may encounter.
+
+**1. Vector**
+
+-   Vector data can be points, lines, or polygons. Quite typically vector data is stored as shapefiles (.shp), although there are many file formats to store vector data. My go-to is geopackages (.gpkg) (more on this later).
+
+-   Often, vector data have multiple attributes, meaning that different variables have been measured for each vector geometry.
+
+**2. Raster**
+
+-   Raster data is gridded data, where each 'grid cell' (also referred to as 'pixel') stores a data value. Data can be categorical (e.g. land use classes) or continuous (e.g. temperature).
+
+-   Grids can be regular, irregular, curvilinear, etc.
+
+**3. Spatiotemporal data cubes**
+
+-   Spatiotemporal data cubes are when vector or raster data have an additional dimension beyond x & y coordinates: time.
+
+**Switching between data types**
+
+In some cases you might turn vector data into raster and vice-versa. R makes this relatively easy.
+
+Often you'll want to use vector and raster data together, e.g., calculating average temperature at a study location. R makes this easy too. We'll do more of this later.
+
+#### Coordinate reference systems
+
+Coordinate reference systems are at the heart of how we make data spatial. They tell us how the coordinates of our data *refer* to, a.k.a *map* to, the earth. There are two main types: Geographic coordinate reference systems (GCS) and Projected coordinate reference systems (PCS).
+
+![Figure1.](images/Fig2.png)
+
+*Note* This image is borrowed from [here](https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/#:~:text=What%20is%20the%20difference%20between,map%20or%20a%20computer%20screen.)
+
+**1. Geographic coordinate reference systems (GCS)**
+
+-   Every spatial dataframe has a GCS
+-   It refers to a 3-dimensional representation of the Earth
+-   X and Y coordinates are defined in *angular* lat-long units, e.g., decimal degrees
+-   WGS84 is a common one you're probably familiar with
+
+**2. Projected coordinate reference systems (PCS)**
+
+-   To map spatial data in 2 dimensions (i.e., on a flat surface), we need to transform it (i.e., *project* it) to *linear* units (e.g., metres)
+-   The projection of angular units to linear will result in some distortion of our spatial data
+-   You can choose the best projected coordinate reference system depending on:
+    a.  What characteristic of the spatial data you are most interested in preserving, e.g., area, distance, etc
+    b.  Where you are in the world; there are global, national and local coordinate reference systems that will be most relevant depending on the scale and location of your data
+    c.  There are resources out there to help you do this, including the [\`crsuggest' R package](https://github.com/walkerke/crsuggest)
+
+But how come we see 'flat' maps that are in WGS84, a lat-long GCS? When we see a GCS mapped in 2 dimensions, it's using a *'pseudo-plate caree'* projection.
+
+There is ALOT to know about coordinate reference systems. We don't have enough time to go through all of the details, but I recommend checking out this more comprehensive [introduction](https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/#:~:text=What%20is%20the%20difference%20between,map%20or%20a%20computer%20screen.).
+
+### R packages available for spatial data
+
+![Figure 2.](images/Fig1.png)
+
+*Note* Figure 1.2 is taken from [Geocomputation with R](https://geocompr.robinlovelace.net/intro.html)
+
+Packages for spatial data have been around since the release of R in the year 2000. Since then, new packages are being developed all the time that supersede old ones. We'll use the most recent and *state-of-the-art* ones here. Namely, we'll use or discuss the following:
+
+-   [sf](https://r-spatial.github.io/sf/articles/sf1.html)
+    -   `sf` stands for 'simple features'
+    -   it has largely replaced `sp`
+    -   this is my go-to for vector data - points, polygons, lines
+-   [terra](https://cran.r-project.org/web/packages/terra/index.html)
+    -   `terra` has replaced `raster` for working with raster data
+    -   it can also handle vector data (has it's own class, 'SpatVectors')
+    -   it's super fast compared to `raster`
+-   [stars](https://r-spatial.github.io/stars/)
+    -   `stars` can handle spatiotemporal data cubes (both raster and vector)
+    -   it can also handle irregular grids, which `terra` cannot
+    -   still learning how to use it, some spatial data scientists I know do all of there vector and raster processing in `stars`. Others switch between packages depending on needs.
+
+### How to start a spatial project in R
+
+#### My basic set-up
+
+1.  Make an analysis folder on cloud storage of choice (e.g., dropbox). Call it something meaningful, e.g., 'bird-analysis'
+2.  Add 3 folders nested inside the analysis folder: 'scripts', 'data', 'outputs'
+3.  Open Rstudio, File -\> New Project -\> Existing Directory -\> browse for analysis folder created in step 1 and open
+4.  Move spatial data files into the nested 'data' folder created in Step 2
+5.  Open the project in Rstudio by double-clicking the .Rproj file
+6.  Open a script, and you're good to start coding and analysing. You don't need to worry about setting the working directory. To read in data, you'll need to have 'data/...' at the start of your pathfile
+7.  Make sure you save scripts in the nested 'scripts' folder
+8.  Save outputs with the pathfile 'outputs/...'
+
+When you're all done, your 'bird-analysis' folder should look like this inside.
+
+![Figure 3.](images/proj.png)
+
+I like this set-up because it keeps scripts, data and outputs nicely organised, and I can easily send the analysis folder to a collaborator and they'll be able to get started quickly by double-clicking the .Rproj file.
+
+But this is just my highly opinionated set-up - ultimately, do what works for you!
+
+#### Tips and Tricks
+
+-   Number your scripts in the order you need them, e.g., 001_wrangle-data.R, 002_analyse-data.R
+-   Make as many nested 'outputs' folders as you need, e.g., 'tables', 'figures', etc
+-   Short scripts are better than long ones. I try to keep scripts bound to a unique task, e.g., wrangling vs. modelling
+-   Use Jenny Bryan's [naming things](https://docplayer.net/55248970-Naming-things-prepared-by-jenny-bryan-for-reproducible-science-workshop.html)
+-   Use github for version control and if the project is highly collaborative. See our lab's framework developed by the amazing Max Campbell [here](https://github.com/seascape-models/seascape_collaboration)
+
+### How to wrangle and map spatial data in R
+
+The first step of any data wrangling or analysis is usually getting the data into R. The way we read in spatial data will depend on the type of spatial data (vector vs. raster) we're using, and therefore the R package.
+
+If you've used R before for wrangling non-spatial data, such as with the packages `dplyr` and `tidyr`, you're in luck - we can use them to wrangle our spatial data too!
+
+Our spatial data consists of camera sites, property boundaries, broad vegetation groups and climate data. What type of spatial data do you suspect these will be (vector or raster)?
+
+#### Using `sf` to read in vector data
+
+First we need to load the package using the `library` function. You can think of packages like books in a library, and loading a package is like taking one off the shelf.
+
+```{r}
+#| echo: true
+#| output: false
+library(sf)
+```
+
+Read in the camera sites.
+
+```{r}
+cam <- st_read('data/Camera_sites.shp')
+```
+
+You should now see an object in your RStudio environment called 'cam'. This is a simple features dataframe, which is essentially a dataframe with a geometry column (storing the coordinates for each observation, in this case each observation is a camera site).
+
+The output in the console gives us some extra information about 'cam'. It has 60 features (rows/sites) and 4 fields (attributes/variables). But, in the Rstudio environment it says there are 5 variables. Why is this?
+
+The metadata also tells us that the geometry type is 'point', there are three dimensions (x,y, and z - but note z values are all 0), the bounding box (min and max x and y coordinates of all the spatial data points), and the projected coordinate reference system (CRS).
+
+Before we start wrangling, we might like to get even more familiar with the structure of the spatial data. Here are a few handy functions for doing that.
+
+Check the class of the R object. Confirm it is a simple feature (sf) dataframe.
+
+```{r}
+class(cam)
+```
+
+Check the structure of the spatial dataframe.
+
+```{r}
+str(cam)
+```
+
+See the first six rows.
+
+```{r}
+head(cam)
+```
+
+Get the column names.
+
+```{r}
+colnames(cam)
+```
+
+Since the z dimension (which could be something like altitude) contains all 0s, we can remove it.
+
+```{r}
+cam <- st_zm(cam)
+```
+
+**A brief note about file formats**
+
+There are many different types of spatial [file storage formats](https://geocompr.robinlovelace.net/read-write.html?q=file#file-formats).
+
+If you work alot in ArcGIS, you'll probably want to stick with shapefiles (.shp) for vector data. But if you think you can get away with doing everything in R (hopefully after this workshop you will!), I highly recommend using geopackages. They are more compressed and only have one file (shapefiles tend to have \~5), so they're easier to manage and send to collaborators. They also don't place character length limits on attribute names.
+
+It's easy to switch between file formats. Let save our camera sites as a geopackage, and then read it back in.
+
+```{r}
+st_write(cam, 'data/Camera_sites.gpkg', append = F)
+cam <- st_read('data/Camera_sites.gpkg')
+```
+
+#### Exploring with quick, interactive maps
+
+One of the most important things to do when first reading in and checking your spatial data is to map it, ideally interactively so you can zoom in and out.
+
+These days there are lots of options for plotting spatial data in R (i.e., mapping the data). You can use base R or `ggplot`, one of the best graphics-making packages out there. There's also `mapview`, `leaflet`, and many others.
+
+My go-to is `tmap`. You can make interactive maps to explore your data very quickly, with just one line of code. You can also make beautiful, publication-quality maps. We'll try both.
+
+First, let's do a 'quick thematic map' using the 'qtm' function from `tmap`.
+
+```{r}
+library(tmap)
+tmap_mode('view')
+qtm(cam, basemap = "Esri.WorldTopoMap")
+```
+
+Looks good! Try clicking on when of the site locations and notice the pop-up windows. In other interactive mapping packages (e.g., `leaflet`) we need to write lots of extra code to get this kind of functionality. Here only 3 lines of code!!
+
+Let's read in some other site-relevant vector data and map it all together.
+
+```{r}
+veg <- st_read('data/Broad_Veg_Groups.shp')
+property <- st_read('data/Property_boundaries.shp')
+```
+
+Notice there are almost 400000 polygons in the 'veg' data. Mapping this many polygons could be a bit slow in R. Let's crop the vegetation data so that it matches the bounding box of our camera site data. This will probably reduce the number of polygons in the spatial dataframe, and make it easier to manage.
+
+We can use the 'st_crop' function from `sf`. Notice we also use the 'st_bbox' function to get the bounding box of our camera site data.
+
+```{r}
+#| error: true
+veg_crop <- st_crop(veg, st_bbox(cam))
+prop_crop <- st_crop(property, st_bbox(cam))
+```
+
+Ah-ha! Our first error. Unfortunately, errors are very, very common when doing things in R. But the more errors you encounter, the better you'll get at trouble-shooting them. 80% of coding is googling error messages I reckon.
+
+To get good at trouble-shooting errors, read the error message and try to infer what it is telling you. Some error messages aren't so hard to guess the problem, but others are much more cryptic. That's when googling comes in handy. I've found that trying over and over again to decipher error messages has paid off; it's gotten easier over time, and I don't have to ask google as much.
+
+This error message tells us that the coordinate reference systems (crs's) of our vegetation and camera data are not equal, i.e., are not the same. Our spatial data needs to be in the same projected crs to process and map together.
+
+With `sf` we can easily project our vegetation data to be in the same crs as our camera data using the function st_transform. Notice we use the function st_crs to get the coordinate reference system of our camera site data.
+
+```{r}
+veg <- st_transform(veg, st_crs(cam))
+property <- st_transform(property, st_crs(cam))
+veg_crop <- st_crop(veg, st_bbox(cam))
+prop_crop <- st_crop(property, st_bbox(cam))
+```
+
+Now let's do a quick interactive map of all data layers.
+
+```{r}
+qtm(prop_crop, 'NAME') + qtm(veg_crop, 'BVG1M') + qtm(cam)
+```
+
+We'll learn more about how to make a static, publication-quality map with `tmap` later.
+
+#### Splitting and merging vector data
+
+What if we only want to map sites with a specific value for the attribute 'FireHistor'? Note we can easily check what unique values are in an attribute with the base R 'unique' function.
+
+```{r}
+unique(cam$FireHistor)
+```
+
+In R 'NA' means missing value. So there are some camera sites with missing values for 'FireHistor'. To remove those sites we can use our handy data wrangling package `dplyr`. The function 'filter' allows us to select for rows with specific values in our dataframe (either spatial or non-spatial, but in this case spatial).
+
+So let's try removing all the camera sites (or rows in our spatial dataframe) that have a missing value 'NA' in the spatial dataframe.
+
+```{r}
+library(dplyr)
+cam_nona <- filter(cam, !is.na(FireHistor))
+unique(cam_nona$FireHistor)
+```
+
+No more NAs. And note in the Rstudio environment, the 'cam_nona' spatial dataframe only has nine observations (rows/sites) while the original 'cam' has 60. Let's have a look.
+
+```{r}
+qtm(prop_crop, 'NAME') + qtm(veg_crop, 'BVG1M') + qtm(cam_nona)
+```
+
+Great, so we've successfully split a vector dataframe. What if we wanted to merge them back together? That's easy too, we just treat them like a normal dataframe and bind the rows (i.e., sites) together with the 'rbind' function.
+
+```{r}
+cam_merge <- rbind(filter(cam, is.na(FireHistor)), cam_nona)
+```
+
+Voila. Now we have our full spatial dataframe back. You can map it again to make sure if you like.
+
+**Note** in above code I nested a 'filter' within the 'rbind' to select for just the rows that have missing values in 'FireHistor'.
+
+#### Buffering, spatial joins, and intersections
+
+Perhaps we would like to count the number of different vegetation types within a 2km radius of each camera site. First we'll create the buffers using `sf`s 'st_buffer' function.
+
+```{r}
+cam_buff <- st_buffer(cam, 2000)
+qtm(veg_crop, 'BVG1M') + qtm(cam_buff) + qtm(cam)
+```
+
+Looks good. Now we just need to 1) find out which vegetation polygons intersect with each of the camera site buffers, and 2) count up the unique vegetation types for each site.
+
+For the first step we'll do a spatial join to find out where vegetation polygons and camera buffers intersect using the `sf` function 'st_join'.
+
+```{r}
+cam_veg <- st_join(cam_buff, veg_crop)
+dim(cam_buff)
+dim(veg_crop)
+dim(cam_veg)
+```
+
+Notice that our 'joined' spatial dataframe is longer and wider than our individual camera and veg dataframes. Let's take a look at what's happened.
+
+```{r}
+head(cam_veg)
+```
+
+So the new joined dataframe has all of the attributes from the camera and vegetation data combined. Note also the row numbers on the left-hand side of the dataframe - '1, 1.1, 1.2, etc.'. This indicates that rows from the first dataframe that we provided to the 'st_join' function have been duplicated, and you can see the camera site attribute values are in fact repeated. What's happened is that a new row has been made for every vegetation polygon that intersects with a camera buffer.
+
+**Note** 'OBJECTID' was an attribute name common to both dataframes, and so 'OBJECTID' from the camera buffers became 'OBJECTID.x', and 'OBJECTID' from the vegetation polygons became 'OBJECTID.y'.
+
+Now all we need to do is count up the number of unique vegetation types that intersect with each camera site. We can do that like we would a normal dataframe in R, with `dplyr` package functions.
+
+```{r}
+cam_veg_sum <- cam_veg %>% 
+  group_by(NAME) %>% # group by camera sites
+  summarise(veg_count = length(unique(BVG1M))) # count the number of unique vegetation types
+head(cam_veg_sum)
+```
+
+**Note** Above we used a *pipe* (`%>%`) to apply multiple functions ('group_by' and 'summarise') to the 'cam_veg' dataframe. Piping can make your code more efficient to write by taking up less space.
+
+If you want to visually verify that the the summarise above worked as expected, just do an intersection of the first camera buffer with the vegetation data and map it. Based on the above, we expect to see 2 vegetation types.
+
+```{r}
+site1 <- filter(cam_buff, NAME == 'CSR 01') 
+site1_veg <- st_intersection(site1, veg_crop)
+qtm(site1_veg, 'BVG1M', basemap = "Esri.WorldTopoMap")
+```
+
+Perfect!
+
+Okay, now that we've learned how to explore vector data in R, let's get some raster data.
+
+#### Using `terra` to read in raster data
+
+In addition to information about vegetation types, land-use, and road access, we might also like some information about temperature and precipitation at our camera sites.
+
+Often, spatial data on continuous weather and climate variables come in raster format. We'll use the R package `terra` to read in and extract temperature and precipitation data at our camera sites.
+
+```{r}
+library(terra)
+temp <- rast('data/meanann.txt')
+rain <- rast('data/rainan.txt')
+```
+
+To get some information on the resolution and crs of our rasters, just type the name of your raster objects and run in the console.
+
+```{r}
+temp
+rain
+```
+
+A couple of things to note, 1) our rasters are of different resolutions (the rainfall data is coarser than the temperature data) and 2) they are in the same coordinate reference system (WGS84), however that crs is different from our vector data.
+
+```{r}
+qtm(rain) + qtm(temp)
+```
+
+Use the menu below the '+/-' in the top left of the interactive map to turn the temperature raster off, and see the rainfall below. That's because most of the grid cells have a value between 0 to 1000, and `tmap` has created colour 'bins' that mask finer variability in the rainfall data. We'll learn how `tmap` can allow us more control over mapping aesthetics like this later.
+
+For now, we can simply try compressing the scale of the rainfall values using a log transform.
+
+```{r}
+qtm(log(rain)) + qtm(temp)
+```
+
+Looks a bit better. Alternatively base R plotting is great for rasters (and vectors) too. To plot the two rasters side by side, we need to first set the graphical parameters with the base R function 'par'.
+
+```{r}
+par(mfrow=c(1,2)) # matrix of figures by rows, number of rows = 1, number of columns = 2
+plot(temp)
+plot(rain)
+```
+
+#### Changing the resolution of raster data
+
+It's not something we need to do here, but if you wanted to make your rasters the same resolution you can do that with `terra`'s 'aggregate' or 'disaggregate' functions.
+
+Let's try making aggregating the temperature raster to the same resolution as the rainfall data.
+
+```{r}
+temp_agg <- aggregate(temp, fact = res(rain)/res(temp))
+res(temp_agg)
+```
+
+Great, that worked!
+
+Note that we set the aggregation factor by taking the resolution we want (i.e. res of the rainfall raster) and dividing by current resolution of the temperature data. By default the function aggregates by taking the mean of raster cells being aggregated, but you can change this to min or max, etc.
+
+#### Extract raster data at points
+
+Now we'd like to extract average temperature and rainfall at each of our camera sites. `terra` makes that easy with the 'extract' function, but it won't be able to recognise our `sf` (simple features) vector data. Instead, `terra` has its own class for vector data called 'SpatVectors' (conversely, `terra` raster objects are called 'SpatRasters').
+
+So, when we want to use `terra` functions to wrangle raster data with vector data, we need to convert 'simple features' dataframes to SpatVectors with the 'vect' function in `terra`.
+
+Let's try it.
+
+```{r}
+temp_ext <- extract(temp, vect(cam))
+rain_ext <- extract(rain, vect(cam))
+summary(temp_ext)
+summary(rain_ext)
+```
+
+All of the extracted values are NA's. Why would that be?
+
+It's most likely because our rasters are in a different crs than our vector data. `terra` didn't give us an error message telling us this, so it's important to remember that your spatial data needs to be in the same crs.
+
+Let's try projecting the raster data to the same crs as the vector data using `terra`s 'project' function (this is the equivalent of 'st_transform' in the `sf` package).
+
+```{r}
+temp_proj <- project(temp, crs(vect(cam)))
+rain_proj <- project(rain, crs(vect(cam)))
+crs(temp_proj, describe = T)
+crs(rain_proj, describe = T)
+```
+
+Excellent, so we see now that the rasters are in the 'GDA94 / MGA zone 55' projected coordinate reference system. If you want, you can confirm that this is in fact what the camera data is with `sf` as well.
+
+```{r}
+st_crs(cam)$input
+```
+
+**Note** There are several ways to define a coordinate reference system in R spatial, including:
+
+-   Well-known text strings (WKT)
+-   EPSG codes
+-   proj4 strings
+
+Proj4 strings are being deprecated, so I recommend using either EPSG codes or WKT. I tend to use EPSG. We can get the EPSG codes from our coordinate reference systems either as we did above with the `terra` 'crs' function, or with `sf`s 'st_crs' function.
+
+```{r}
+st_crs(cam)$epsg
+```
+
+Now that all of our spatial data are in the same projected crs, let's see if the extract will work.
+
+```{r}
+temp_ext <- extract(temp_proj, vect(cam))
+rain_ext <- extract(rain_proj, vect(cam))
+summary(temp_ext)
+summary(rain_ext)
+```
+
+Excellent! Now let's add those as attributes to our camera site spatial dataframe. There are several ways we could do this in R. We'll use a function from the data wrangling package `dplyr` called 'mutate'. This function allows us to create new variables in spatial and non-spatial dataframes.
+
+```{r}
+cam <- mutate(cam,
+              temp = temp_ext$meanann,
+              rain = rain_ext$rainan)
+head(cam)
+```
+
+**Note** One of the benefits of using the `sf` package for vector data in R is that we can easily wrangle it using packages from the `tidyverse` meta-package. If you load the `tidyverse` library it will load `dplyr` and other packages that are great for wrangling and visualising data, including `ggplot`. Of course, you can also just load these packages individually, as we are here.
+
+However, be aware that you can't use the tidyverse to wrangle `terra`'s SpatRasters and SpatVectors unless you install and load the `tidyterra` package. We won't use it here, but it's good to know about, check out the [vignette](https://dieghernan.github.io/tidyterra/articles/tidyterra.html).
+
+#### Buffering vector data to extract raster data
+
+What if we wanted to know average temperature and rainfall within a 1km distance of each of our camera sites? First we'll buffer the camera sites with a 1km radius, and use those buffer polygons to extract average temperature and precipitation from the rasters.
+
+```{r}
+cam_buff <- st_buffer(cam, 1000)
+qtm(cam_buff, basemap = "Esri.WorldTopoMap") + qtm(cam)
+```
+
+Now that we have the buffers we can extract and add the attributes to our camera site spatial dataframe as before. We just have to tell the 'extract' function how to do the extraction, i.e., take the mean of all raster cells, min, max, etc. We'll take the mean here.
+
+```{r}
+temp_ext2 <- extract(temp_proj, vect(cam_buff), mean)
+rain_ext2 <- extract(rain_proj, vect(cam_buff), mean)
+
+cam <- mutate(cam,
+              temp_buff = temp_ext2$meanann,
+              rain_buff = rain_ext2$rainan)
+head(cam)
+```
+
+Now that we have these additional attributes, we might like to save them as a normal dataframe, perhaps to share with colleagues.
+
+That's easy with `sf`'s 'st_drop_geometry' function. We'll use that and then save the non-spatial dataframe in our 'outputs' folder as a '.csv' file.
+
+```{r}
+cam.df <- st_drop_geometry(cam)
+head(cam.df)
+write.csv(cam.df, 'outputs/camera_sites.csv')
+```
+
+#### Making a publication-quality map
+
+Now that we've processed and explored our spatial data, let's try making a publication-quality map using `tmap`.
+
+So far we've been using the 'interactive' mapping mode in `tmap` and the 'qtm' function to make quick thematic maps. Here, we'll use `tmap`s 'tm\_...' functions to add more features and have more control over aesthetics.
+
+-   First we declare the *shape* that we want to map with 'tm_shape'.
+-   Then we define what *type* of shape it is, i.e., polygon, point, raster etc, using the 'tm\_..' function for that type of shape, e.g., 'tm_polygon', 'tm_dots', 'tm_raster', etc.
+-   As an example, if we want to plot our property data as polygons, we need to pair a 'tm_shape' function with the 'tm_polygons' function. This will make more sense when we do the example below, and check out `tmap` in a [nutshell](https://mran.microsoft.com/snapshot/2017-01-20/web/packages/tmap/vignettes/tmap-nutshell.html) to learn more.
+
+```{r}
+tmap_mode('plot') # make a static map instead of an interactive one
+
+tm_shape(veg_crop) +
+  tm_fill(col = 'BVG1M', legend.show = F) +
+  tm_shape(prop_crop) +
+  tm_borders(lwd = 2) +
+  tm_shape(cam) +
+  tm_symbols(shape = 'FireHistor', 
+             col = 'black', 
+             size = 0.3, 
+             title.shape = 'Fire History') +
+  tm_layout(legend.bg.color = 'white',
+            legend.bg.alpha = 0.5,
+            legend.position = c(0.03, 0.68)) +
+  tm_compass() +
+  tm_scale_bar(text.size = 0.6) 
+```
+
+If you like, try turning on and off the roads layer by removing the \#'s in the code above.
+
+#### Making an inset map
+
+If we're using this map for a publication, it might also be nice to give our readers some broader context as to where our sites sit within Australia.
+
+To make an inset, we need a polygon of the continent of Australia. Our temperature raster is for all of Australia, so let's try turning that into a polygon. We'll set the argument 'dissolve' as true, so that all cells with same values are combined into a single polygon.
+
+**Note** that here we are turning a SpatRaster into a SpatVector. So our 'aus' polygon will be `terra`s class of vector data. `tmap` doesn't recognise SpatVectors, so will need to turn it into an `sf` vector using the function 'st_as_sf'.
+
+```{r}
+aus <- as.polygons(temp_proj, dissolve = TRUE)
+aus.sf <- st_as_sf(aus)
+qtm(aus.sf)
+```
+
+That's okay, but we'd like to get rid of all the bands that represent similar temperature values. So essentially we'd like to do another dissolve. For `sf` polygons, we can perform a dissolve using the `dplyr` summarise function.
+
+```{r}
+aus.sf2 <- summarise(aus.sf)
+qtm(aus.sf2)
+```
+
+Awesome. Now that we have a polygon of the continent of Australia, let's use the package `tmaptools` to make an inset. First we use the 'bb_poly' function to get a polygon that represents the bounding box of our camera site study area, so that we can map that on Australia.
+
+```{r}
+library(tmaptools)
+camsites <- bb_poly(cam)
+qtm(aus.sf2) + qtm(camsites)
+```
+
+So we can see there is now a rectangle indicating where our camera sites are in Australia.
+
+Now we want to make this an inset in our site map. To plot multiple maps together, we need to store them as objects in our Rstudio environment. So I'll take the code we used above to make our site location map and store it as 'sitemap'. While I'm at it, I'll move the legend outside of the map, so that I can put the inset there instead. I'll store the Australia inset map as 'ausinset'.
+
+Then I'll convert those maps to 'grob' objects using the 'tmap_grob' function (which makes it easier for mapping the inset).
+
+```{r}
+#| echo: true
+#| output: false
+# store site map
+sitemap <- tm_shape(veg_crop) +
+  tm_fill(col = 'BVG1M', legend.show = F) +
+  tm_shape(prop_crop) +
+  tm_borders(lwd = 2) +
+  tm_shape(cam) +
+  tm_symbols(shape = 'FireHistor', 
+             col = 'black', 
+             size = 0.3, 
+             title.shape = 'Fire History') +
+  tm_layout(legend.bg.color = 'white',
+            legend.bg.alpha = 0.5,
+            legend.outside = T,
+            legend.outside.position = c('right', 'top')) +
+  tm_compass() +
+  tm_scale_bar(text.size = 0.6) 
+
+# store aus inset map
+ausinset <- tm_shape(aus.sf2) +
+  tm_fill(col = 'lightgrey') +
+  tm_shape(camsites) +
+  tm_borders(lw = 2)
+
+# convert to grob objects
+sitemap_g <- tmap_grob(sitemap)
+ausinset_g <- tmap_grob(ausinset)
+```
+
+Now we can use the `cowplot` function to draw these maps together and save. The 'ggdraw' function allows us to draw the inset map on top of the site map, and we use 'ggsave' to save the map to our 'outputs' folder.
+
+```{r}
+library(ggplot2)
+library(cowplot)
+
+finalmap <- ggdraw() +
+  draw_plot(sitemap_g) +
+  draw_plot(ausinset_g,
+            width = 0.2, height = 0.2,
+            x = 0.04, y = 0.6)
+finalmap
+
+ggsave('outputs/final_map.png', width = 12, height = 7)
+```
+
+**Note** because we ended up converting our maps into `ggplot` objects in order to map the insets together, we used `ggsave` to save the image.
+
+Normally when you're saving `tmap` objects you'll use the 'tmap_save' function. Let's try it below to save our camera site map without the inset. Remember that we stored the camera site map as 'sitemap'.
+
+```{r}
+sitemap
+tmap_save(sitemap, 'outputs/site_map.png', width = 7, height = 6)
+```
+
+What else would be good to add to the map? Search for more `tmap` vignettes and tutorials on the web to learn how to do more, such as trying different style themes and making animated maps.
+
+### Common problems in Rspatial
+
+Something that happens often when using R for spatial data, is that we encounter geometry errors that other spatial software (e.g., QGIS, ArcGIS) tend to fix 'behind the scenes'. I find myself using this excellent post on [tidying feature geometries](https://r-spatial.org/r/2017/03/19/invalid.html) by Edzer Pebesma, a developer of spatial packages in R, to solve these kinds of problems.
+
+Learning how to use R for spatial data science can be a steep learning curve. But, at least for me, the effort has really paid off in terms of the scale and types of spatial analyses I can run. For big, global analyses, I can run my R script on a high-performance computer (HPC) and speed it up with parallelisation. And everything is scripted and reproducible, making it easier for me to make my science open and transparent.
+
+Having a group of colleagues and friends to discuss and solve common problems can make the learning curve more fun. Here in Brisbane you can join the [UQ geospatial community](https://geospatial-community.netlify.app/), and you can meet a broader community of programming enthusiast at [RLadies Brisbane](https://www.meetup.com/en-AU/rladies-brisbane/?_cookie-check=yPZvMC_FbOGrDFxo) events.
+
+See below for more resources and communities that can also be incredibly helpful, including stack exchange and twitter.
+
+Happy R'ing!!
+
+### Useful resources
+
+-   Google
+
+-   [Stack Exchange](https://stackexchange.com/)
+
+-   Twitter [#rspatial](https://twitter.com/ChristinABuelow/status/1547145678941736961)
+
+-   [Geocomputation in R](https://geocompr.robinlovelace.net/)
+
+-   [Spatial Data Science with applications in R](https://keen-swartz-3146c4.netlify.app/)
+
+-   [Spatial Data Science with R and terra](https://rspatial.org/terra/index.html)
+
+-   [R cheat sheets](https://www.rstudio.com/resources/cheatsheets/)
+
+-   [Australian climate data](http://www.bom.gov.au/jsp/ncc/climate_averages/rainfall/index.jsp)

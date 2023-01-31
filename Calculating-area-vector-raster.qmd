@@ -1,0 +1,128 @@
+---
+title: "Calculating areas with vector and raster data"
+format: html
+editor: visual
+date: 31/12/2022
+---
+
+**Disclaimer**: the [author](https://github.com/cabuelow) of these notes is by no means an expert on the topic, this is a compilation of information I've gathered through-out my time dabbling in Rspatial. So please get in [touch]((mailto:c.buelow@griffith.edu.au)) if anything in the notes should be corrected.
+
+### Areas on a sphere vs. areas on a plane
+
+Can I calculate area accurately using a latitude-longitude geographic coordinate reference system (GCS), or should I use a projected coordinate reference system (PCS)?
+
+Geographic CRS's represent the Earth's surface in 3 dimensions (Figure 1). Calculating area in 3-D requires geodesic (i.e., ellipsoidal) computations, which can be complex, computationally expensive and time-consuming. Projected CRS's flatten the earth into 2 dimensions and can help make area computations faster, but will as also cause some distortion of the Earth's surface. So, if you need to use a PCS when calculating area, make sure to use one that preserves this (i.e., an equal-area projection).
+
+![Figure1.](images/Fig2.png)
+
+*Note* This image is borrowed from [here](https://www.esri.com/arcgis-blog/products/arcgis-pro/mapping/gcs_vs_pcs/#:~:text=What%20is%20the%20difference%20between,map%20or%20a%20computer%20screen.)
+
+Choosing the best GCS and PCS will depend on: 
+    a.  Where you are in the world; there are global, national and local ellipsoids and coordinate reference systems that will be most accurate depending on the location of your data
+    b. For PCS's, what characteristic of the spatial data you are most interested in preserving, e.g., area, distance, etc
+    c.  There are resources out there to help you do this, including the [\`crsuggest' R package](https://github.com/walkerke/crsuggest)
+
+### Are there any downsides to projecting my data?
+
+Generally it's best to leave your spatial data in it's native projection if possible, and this is especially true for raster data. Projecting rasters involves calculating new pixel values for the reprojected raster via resampling. There are several methods for resampling, see descriptions [here](https://geocompr.robinlovelace.net/geometry-operations.html#resampling).
+
+Different resampling algorithms will provide different pixel value estimates, so you'll need to choose the best one for your data. But resampling will always result in slight inaccuracies in pixel values; that's why it's best to avoid re-projecting raster data if possible.
+
+### Vector area calculations and the S2 spherical geometry engine
+
+Google's S2 spherical geometry engine is available to us in R when using the `sf` package to calculate area with vector data. This is great because older versions of `sf` (< v.1.0) relied on GEOS planar R2 geometry engines, making calculating areas on a sphere with a PCS computationally inefficient and inaccurate (see this great resource for a full [explanation](r-spatial.github.io/sf/articles/sf7.html).
+
+By default, when you load recent versions of `sf` (> v.1.0), the S2 spherical geometry engine is turned on and available for calculating vector areas accurately and efficiently. However, compared to GEOS, S2 has strict polygon conformance that if violated will render invalid geometries. For vector data created in older versions of `sf`, this can be a bit of a headache. One solution is to turn off S2:
+
+```{r}
+sf_use_s2(FALSE)
+```
+However, if you turn S2 off, `sf` will no longer use the spherical geometry engine when performing geometry operations (such as calculating area) on spatial data in latitude-longitude geographic CRS's. Instead it will revert to the GEOS R2 libraries and treat spherical, geographic CRS's as planar, 2D maps, and can result in inaccuracies when calculating areas. Another solution is to try fixing the invalid geometries with functions like `st_make_valid`.
+
+In summary, calculating vector areas in R using a GCS is fine if S2 is turned on and available. If it's not, make sure you are in an appropriate PCS that preserves area.
+
+### Raster area calculations
+
+As mentioned earlier, it's best to leave your raster data in it's native projection if possible. If it's in a GCS (e.g., WGS84), `terra` will compute area in meters squared using a geodesic computations based on your spatial data's ellipsoid (3-D, spherical representation of the Earth's surface), while `exact_extractr` uses spherical approximations of the Earth. There are several workflows for performing these computations (see below). The same with vector data, if your raster data is in a PCS, make sure it preserves area.
+
+### Workflows for calculating area with vector and raster data
+
+There are several packages available in R that allow area to be calculated from rasters, here we'll focus on `terra`, `exactextractr`. For vector data, we'll use `sf`. The workflows below are taken from [here](https://stackoverflow.com/questions/68322863/is-this-flow-to-extract-the-area-of-all-pixels-2-within-a-polygon-layer-corre).
+
+First, we'll create a polygon and a raster.
+
+```{r}
+library(terra)
+library(sf)
+sf_use_s2(TRUE)
+
+r <- rast(nrows=10, ncols=10, xmin=0, ymin=0, xmax=10, ymax=10)
+r <- init(r, 8) #initialise a spatraster with values
+p <- vect('POLYGON ((2 2, 7 6, 4 9, 2 2))', crs = crs(r))
+rp <- mask(r, p)
+```
+
+Plot with `tmap` to take a quick look
+
+```{r}
+library(tmap)
+tmap_mode('view')
+
+qtm(rp) + qtm(st_as_sf(p))
+```
+
+Calculate area of the polygon using `terra` or `sf`
+
+```{r}
+
+expanse(p, unit = 'km', transform = TRUE)
+# 165515 km2
+
+st_area(st_as_sf(p))/1e6
+# 166235 km2
+
+# when you turn off spherical libraries, they provide same area calculations
+sf_use_s2(FALSE)
+
+st_area(st_as_sf(p))/1e6
+# 165515 km2
+
+```
+
+Compute area of each cell and combine with the values used
+
+```{r}
+a <- cellSize(r, unit="km")
+ra <- c(r, a) # create a raster stack, one with original raster pixel values, one with value for pixel area
+names(ra) <- c("values", "area_km2")
+```
+
+Extract, subset, and computed sum
+
+```{r}
+rap <- mask(ra, p)
+rap_poly <- as.polygons(rap, dissolve = T)
+
+e <- extract(rap, p, exact=TRUE)
+sum(e$area_km2 * e$fraction)
+# 165350 km2
+
+e2 <- extract(rap, p, exact=FALSE)
+sum(e2$area_km2)
+# 183698.1 km2
+
+expanse(rap[[1]], unit = 'km', transform = TRUE)
+# 294025.9 km2
+
+expanse(rap_poly, unit = 'km', transform = TRUE)
+# 294041.5 km2
+```
+
+Look at the difference between mask, and crop with mask = T
+
+```{r}
+ra1 <- mask(r, p)
+ra2 <- crop(r, p, mask = T)
+
+qtm(ra1) + qtm(ra2) + qtm(st_as_sf(p))
+```

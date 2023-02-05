@@ -12,6 +12,9 @@ toc-title: Content
 toc-depth: 4
 #published-title: Date
 embed-resources: true
+project:
+  type: website
+  output-dir: docs
 ---
 
 This short tutorial will focus on area calculation in R using both vector and raster data. Use the following code to install all necessary packages

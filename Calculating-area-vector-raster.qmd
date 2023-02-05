@@ -11,7 +11,7 @@ toc-location: left
 toc-title: Content
 toc-depth: 4
 #published-title: Date
-#embed-resources: true
+embed-resources: true
 project:
   type: website
   output-dir: docs

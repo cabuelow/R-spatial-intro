@@ -135,8 +135,9 @@ Note that {terra} also has a class for vector data, called 'SpatVectors' (raster
 First, we'll create a polygon and a raster.
 
 ```{r}
-library(terra)
 #| warning: false
+library(terra)
+
 sf_use_s2(TRUE) # make sure s2 is on (we already have sf loaded)
 r <- rast(nrows=10, ncols=10, xmin=0, ymin=0, xmax=10, ymax=10) # make a raster
 r <- init(r, 8) # initialise a spatraster with values

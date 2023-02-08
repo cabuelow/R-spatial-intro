@@ -128,8 +128,8 @@ suggest_crs(dat_v)
 There are a few different PCS's for us to choose from, all of which are either Universal Transverse Mercator (UTM) or transverse mercator, which are conformal - meaning they preserve angles, but distort distance and area. But since they are centered on Sudan the distortion should be minimal, so let's see how the estimate compares to geodesic estimates with GeographicLib. See [here](http://www.geo.hunter.cuny.edu/~jochen/gtech201/lectures/lec6concepts/map%20coordinate%20systems/how%20to%20choose%20a%20projection.htm) for more tips on choosing a PCS.
 
 ```{r}
-dat_p <- dat_v %>% st_transform('EPSG:22992')
-area_UTM <- st_area(dat_p) %>% units::set_units('km2') # sf uses planar geometry library GEOS
+dat_p2 <- dat_v %>% st_transform('EPSG:22992')
+area_UTM <- st_area(dat_p2) %>% units::set_units('km2') # sf uses planar geometry library GEOS
 area_UTM - (area_GeoLib)
 ```
 

@@ -19,7 +19,7 @@ project:
 
 This short tutorial will focus on area calculation in R using both vector and raster data. Use the following code to install all necessary packages:
 
-`install.packages('terra', 'tmap', 'sf', 'tidyverse', 'exactextractr', 'rnaturalearthdata', 'microbenchmark')`
+`install.packages('terra', 'tmap', 'sf', 'tidyverse', 'exactextractr', 'rnaturalearthdata', 'microbenchmark', 'crsuggest')`
 
 **Disclaimer**: the [author](https://github.com/cabuelow) of these notes is by no means an expert on this topic. This is merely a compilation of information I've gathered while going down a googling 'rabbit-hole'. So please get in [touch](mailto:c.buelow@griffith.edu.au) if anything in the notes should be corrected.
 
@@ -89,13 +89,13 @@ qtm(dat_v)
 It works in this case - the geometry is valid. Now, let's compare area estimates with s2 on and off.
 
 ```{r}
-area_s2 <- st_area(dat_v)/1e6 # area in km2, s2 on by default
+area_s2 <- st_area(dat_v) %>% units::set_units('km2') # s2 on by default
 sf_use_s2(FALSE) # turn off s2
-area_GeoLib <- st_area(dat_v)/1e6 # area in km2, s2 off, sf calculates geodesic area using GeographicLib
+area_GeoLib <- st_area(dat_v) %>% units::set_units('km2') # s2 off, sf calculates geodesic area using GeographicLib
 area_s2 - area_GeoLib # subtract to get the difference in area estimates 
 ```
 
-There is an \~6000 km2 difference in area (note the m2 indicated in the output is incorrect, because we divided by 1e6 to convert m2 to km2). The geodesic calculation using the GeographicLib (i.e, s2 turned off) will be the most accurate estimate because it doesn't assume the Earth is a perfect sphere. But which is faster? Let's use {microbenchmark} to find out.
+There is an \~6000 km2 difference in area. The geodesic calculation using the GeographicLib (i.e, s2 turned off) will be the most accurate estimate because it doesn't assume the Earth is a perfect sphere. But which is faster? Let's use {microbenchmark} to find out.
 
 ```{r}
 #| warning: false
@@ -112,11 +112,28 @@ How do geodesic area computations using a lat-long GCS compare to an equal-area 
 
 ```{r}
 dat_p <- dat_v %>% st_transform('ESRI:54009')
-area_mollweide <- st_area(dat_p)/1e6 # sf uses planar geometry library GEOS
-area_mollweide - (area_GeoLib/1e6)
+area_mollweide <- st_area(dat_p) %>% units::set_units('km2') # sf uses planar geometry library GEOS
+area_mollweide - (area_GeoLib)
 ```
 
 There is an \~ 10000 km2 difference in area estimates, much larger than the difference between area on a sphere (s2 on) and on a spheroid (s2 off, geodesic estimates using GeographicLib).
+
+Let's try getting a PCS centered on Sudan and compare with lat-long GCS.
+
+```{r}
+library(crsuggest)
+suggest_crs(dat_v)
+```
+
+There are a few different PCS's for us to choose from, all of which are either Universal Transverse Mercator (UTM) or transverse mercator, which are conformal - meaning they preserve angles, but distort distance and area. But since they are centered on Sudan the distortion should be minimal, so let's see how the estimate compares to geodesic estimates with GeographicLib. See [here](http://www.geo.hunter.cuny.edu/~jochen/gtech201/lectures/lec6concepts/map%20coordinate%20systems/how%20to%20choose%20a%20projection.htm) for more tips on choosing a PCS.
+
+```{r}
+dat_p <- dat_v %>% st_transform('EPSG:22992')
+area_UTM <- st_area(dat_p) %>% units::set_units('km2') # sf uses planar geometry library GEOS
+area_UTM - (area_GeoLib)
+```
+
+An ~9000 km2 difference, similar to the equal-area projection.
 
 #### In summary...
 
@@ -155,7 +172,7 @@ Now let's compare area estimates with {terra} and {sf}.
 ```{r}
 area_t <- expanse(p, unit = 'km') # here 'terra' is computing geodesic area (i.e., based on a spheroid, not planar)
 sf_use_s2(FALSE) # turn off s2 to uses the GeographicLig
-area_sf <- st_area(st_as_sf(p))/1e6 # here 'sf' using GEOS to calculate area
+area_sf <- st_area(st_as_sf(p)) %>% units::set_units('km2') # here 'sf' using GEOS to calculate area
 round(area_t - as.numeric(area_sf))
 ```
 

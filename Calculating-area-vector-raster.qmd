@@ -117,10 +117,10 @@ How do geodesic area computations using a lat-long GCS compare to an equal-area 
 sf_use_s2(TRUE) # turn s2 so we get the correct coordinates for lat-long data
 st_coordinates(st_centroid(dat_v)) # get the long - lat coordinates of the centroid
 ```
-So the longitude of Sudan's centroid is 29.90747$^\circ$ and the latitude is 15.96797$^\circ$.
+So the longitude of Sudan's centroid is 29.90747$^\circ$ and the latitude is 15.96797$^\circ$. We can use a proj4string to define a Lambert Azimuthal Equal Area projection (proj = laea) that is centered on Sudan (lat_0=16 + lon_0=30).
 
 ```{r}
-dat_p <- dat_v %>% st_transform('+proj=laea +lat_0=16 +lon_0=30')
+dat_p <- dat_v %>% st_transform('+proj=laea +lat_0=16 +lon_0=30') # project our dat to a Lambert Azimuthal Equal Area (laea) projection centered on Sudan (lat_0=16 + lon_0=30)
 area_laea <- st_area(dat_p) %>% units::set_units('km2') # sf uses planar geometry library GEOS
 area_laea - area_GeoLib
 ```

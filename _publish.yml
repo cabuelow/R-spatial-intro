@@ -2,3 +2,7 @@
   quarto-pub:
     - id: 7ffad3c7-3af0-408b-b536-f0d8950a00d6
       url: 'https://quartopub.com/sites/cabuelow/calculating-areas-with-vector-and-raster-data-in-r'
+- source: R-for-mapping-and-more_notes.qmd
+  quarto-pub:
+    - id: 014e6911-d99d-476d-82bc-fc30d8da0407
+      url: 'https://quartopub.com/sites/cabuelow/r-for-mapping-and-more'

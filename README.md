@@ -14,7 +14,7 @@ There are two parts:
  - How to make a map in R
  - Common problems you might encounter in R spatial, and how to solve them
 
- \*\* Hit the green 'code' button in the top right to download a .zip with a .html file you can double-click to read the notes and use the code. Download the data [here](https://www.dropbox.com/sh/5uf8994chag6qce/AABnY9OmKeyTkNa-9e50c0FNa?dl=0).
+Check out the tutorial [here](https://cabuelow.quarto.pub/r-for-mapping-and-more/) and if you want to run through the code yourself, download the data [here]((https://www.dropbox.com/sh/5uf8994chag6qce/AABnY9OmKeyTkNa-9e50c0FNa?dl=0))
 
 2. **Calculating areas with vector and raster data** This provides some insight into how best to calculate area in R. A link to the published version of the blog is here:
 https://cabuelow.quarto.pub/calculating-areas-with-vector-and-raster-data-in-r/

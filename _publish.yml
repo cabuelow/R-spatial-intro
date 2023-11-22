@@ -5,4 +5,7 @@
 - source: R-for-mapping-and-more_notes.qmd
   quarto-pub:
     - id: 014e6911-d99d-476d-82bc-fc30d8da0407
-      url: 'https://quartopub.com/sites/cabuelow/r-for-mapping-and-more'
+      url: 'https://cabuelow.quarto.pub/r-for-mapping-and-more'
+  netlify:
+    - id: 075f9b30-fff1-4e36-9e80-24cd99657b9b
+      url: 'https://heartfelt-naiad-8fac38.netlify.app'

@@ -12,16 +12,16 @@ toc-location: left
 toc-title: Content
 toc-depth: 4
 published-title: Date
-date: 2023-11-19
+date: 2023-11-23
 editor: visual
 embed-resources: true
 ---
 
-### Using R for mapping and spatial data science
-
 ```{=html}
-<iframe class="slide-deck" src="slides/RSpatial-intro-slides.html"></iframe>
+<iframe class="slide-deck" src="slides/RSpatial-intro-slides.html"width=790 height=500 data-external="1"></iframe> 
 ```
+
+### Using R for mapping and spatial data science
 
 #### Why?
 
@@ -685,6 +685,8 @@ Happy R'ing!!
 ### Useful resources
 
 -   Google
+
+-   [Geospatial Share Tutorials](https://brisbane-geocommunity.netlify.app/workshops)
 
 -   [Stack Exchange](https://stackexchange.com/)
 

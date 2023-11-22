@@ -1,0 +1,42 @@
+---
+title: "Introduction to Spatial Analysis in R"
+author: Christina Buelow, Felipe Suarez Castro, Nick Wiggins, Annie Nguyen, Catherine Kim
+date: November 23, 2023
+format: 
+  revealjs:
+    text-align: center
+---
+
+## Workshop Goals
+
+- Introduce processing visualization, and mapping spatial data in R
+- Learn popular spatial packages: sf, terra
+- Troubelshoot common problems
+
+
+## Your Instructors
+
+:::: {.columns}
+
+::: {.column width="50%"}
+#### Dr Christina Buelow
+![](pics/Christina_Buelow.png)
+
+
+#### Dr Felipe Suarez-Castro
+![](pics/andres_felipe_suarez-castro.jpg){width="195" height="195"}
+
+Australian Rivers Institute, Griffith University
+:::
+
+::: {.column width="50%"}
+#### Nicholas Wiggins, UQ Library
+![](pics/nicholas_wiggins.png){width="195" height="195"}
+
+#### Annie Nguyen, UTAS
+![](pics/Annie.jpg){width="195" height="195"}
+:::
+
+::::
+
+

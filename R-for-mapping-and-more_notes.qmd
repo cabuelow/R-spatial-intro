@@ -18,7 +18,7 @@ embed-resources: true
 ---
 
 ```{=html}
-<iframe class="slide-deck" src="slides/RSpatial-intro-slides.html"width=790 height=500 data-external="1"></iframe> 
+<iframe class="slide-deck" src="https://rspatial-intro-slides.netlify.app/"width=790 height=500 data-external="1"></iframe> 
 ```
 
 ### Using R for mapping and spatial data science

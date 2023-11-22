@@ -1,0 +1,4 @@
+- source: RSpatial-intro-slides.qmd
+  netlify:
+    - id: e6b3f5fa-cb8c-4904-bf61-dda5bc7f5fb5
+      url: 'https://dapper-mousse-3074d4.netlify.app'
